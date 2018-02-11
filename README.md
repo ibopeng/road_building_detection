@@ -1,2 +1,2 @@
 # road_detection
-This is a project aiming to extract roads from airborne remote sensing images
+This is a project aiming at extract roads from airborne remote sensing images
