@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
-
-This is a temporary script file.
+Created on Sun Feb 11 09:34:44 2018
+@ Author: Bo Peng
+@ University of Wisconsin - Madison
+@ Project: Road Extraction
 """
 
 import dataProc as dp

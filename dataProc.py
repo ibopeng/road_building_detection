@@ -4,6 +4,7 @@ Created on Sun Feb 11 09:34:44 2018
 
 @ Author: Bo Peng
 @ University of Wisconsin - Madison
+@ Project: Road Extraction
 """
 
 import os
@@ -11,7 +12,7 @@ import random
 import numpy as np
 from skimage.io import imread
 from sklearn import preprocessing
-import matplotlib.pyplot as plt
+
 
 
 def load_data(data_directory, nRand_sel):
@@ -86,7 +87,7 @@ def image_normaliztion(im):
     
     return im_norm
 
-def patch_ceter_point(im_width, im_height, patch_width, patch_height, nIm):
+def patch_ceter_point(im_width, im_height, im_patch_width, im_patch_height, lb_patch_width, lb_patch_height, nIm):
     """
     Compute the center point coordinates of the patch in raw images
     INPUT:
@@ -98,24 +99,26 @@ def patch_ceter_point(im_width, im_height, patch_width, patch_height, nIm):
     """
     # for each image, the pathc center coordinates are the same
     patch_cpt = []
-    num_patch_width = im_width / patch_width
-    num_patch_height = im_height / patch_height
+    num_patch_width = (im_width - im_patch_width) / lb_patch_width + 1
+    num_patch_height = (im_height - im_patch_height) / lb_patch_height + 1
     for k in range(nIm):
         for i in range(num_patch_height):
-            cpt_i = patch_height / 2 + i * patch_height # coordinate: y from up to bottom
+            cpt_i = im_patch_height / 2 + i * lb_patch_height # coordinate: y from up to bottom
             for j in range(num_patch_width):                
-                cpt_j = patch_width / 2 + j * patch_width # coordinate: x from left to right
+                cpt_j = im_patch_width / 2 + j * lb_patch_width # coordinate: x from left to right
                 patch_cpt.append([k, cpt_j, cpt_i])
                 
     return patch_cpt
 
-def train_batch(image, label, patch_cpt, im_patch_width, im_patch_height, lb_patch_width, lb_patch_height, batch_size, batch_idx):
+def data_batch(image, label, patch_cpt, im_patch_width, im_patch_height, lb_patch_width, lb_patch_height, batch_size, batch_idx):
     """
     Extract image patches for training according to patch_cpt
+    Each images patches are overlapped to make label patches exactly join together without overlap or gap
     INPUT:
         image: raw images loaded
         label: road labels loaded
         patch_cpt: center points for each patch
+        im/lb_patch_width/height: size of image/label patches
         batch_size: the number of patches used for training in one iteration
         batch_idx: the index of current batch
     OUTPUT:
@@ -147,19 +150,3 @@ def train_batch(image, label, patch_cpt, im_patch_width, im_patch_height, lb_pat
         lb_patch_batch.append(lb_patch)
     
     return im_patch_batch, lb_patch_batch
-    
-    
-    
-# test the patch center points  
-patch_cpt = patch_ceter_point(1500, 1500, 64, 64, 50)
-   
-# test data loading
-images, labels = load_data('./data/train', 50)
-
-im_patch_batch, lb_patch_batch = train_batch(images, labels, patch_cpt, 64, 64, 16, 16, 60, 7)
-
-
-im_norm = image_normaliztion(images[1])
-plt.imshow(im_norm)
-#plt.imshow(images[1])
-plt.show()
