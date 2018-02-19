@@ -10,7 +10,7 @@ import dataProc as dp
 import tensorflow as tf
 import designCNN as dc
 import random
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 """define data dimensions"""
 # raw image size
@@ -32,7 +32,7 @@ num_epochs = 5
   
 """Data Preprocessing: Normalization"""
 # load raw images and labels
-im_raw_trn, la_raw_trn = dp.load_data('./data/train', num_rawIm)
+im_raw_trn, la_raw_trn = dp.load_data('../mass_data_road/data_sub/train', num_rawIm)
 # normalization of raw images
 im_norm_trn = [dp.image_normaliztion(im_raw_trn[i]) for i in range(num_rawIm)]   
 # change labels data type to int32 and set 255 to be 1 
@@ -151,15 +151,16 @@ sess = tf.Session(graph = graph)
 _ = sess.run(init)
 
 sz_imtrain_trn = len(patch_cpt)
-num_iterations = sz_imtrain_trn / batch_size
+num_iterations = int(sz_imtrain_trn / batch_size)
 
 acc_trn = [] 
-tmp = 0 
+
   
 for ep in range(num_epochs):
     # shuffle the training patches
     # patch_cpt is in fact the indicator of each patch
     random.shuffle(patch_cpt)
+    nIter = 0 
     
     for it in range(num_iterations):
         # extract image and label patches in current batch
@@ -177,12 +178,12 @@ for ep in range(num_epochs):
         # train CNN
         sess.run(train_op, feed_dict = Feed_Dict_Trn)
         
-        if it % 10 == 0:
+        if it % 100 == 0:
             #at the end of this epoch, compute the accuracy           
             acc_trn.append(sess.run(acc, feed_dict = Feed_Dict_Trn))
             msg = "Epoch: {0}...Train acc: {1:>6.1%}"
-            print(msg.format(ep+1, acc_trn[tmp]))
-            tmp = tmp + 1
+            print(msg.format(ep+1, acc_trn[nIter]))
+            nIter = nIter + 1
 
 sess.close()        
         
