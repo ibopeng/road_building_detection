@@ -175,39 +175,37 @@ with graph.as_default():
 
 with tf.Session(graph = graph) as sess:
 	# initialize variables
-	sess.run(init)
+    sess.run(init)
 
-	sz_imtrain_trn = len(patch_cpt_trn)
-	num_iterations = int(sz_imtrain_trn / batch_size)
-#	num_iterations = 200
+    sz_imtrain_trn = len(patch_cpt_trn)
+    num_iterations = int(sz_imtrain_trn / batch_size)
 
-	acc_trn = [] 
-	acc_val = []
+    acc_trn = []
+    acc_val = []
 
-	for ep in range(num_epochs):
+    for ep in range(num_epochs):
 	    # shuffle the training patches
 	    # patch_cpt is in fact the indicator of each patch
 	    random.shuffle(patch_cpt_trn)
 	    
 	    for it in range(num_iterations):
 	        # extract image and label patches in current batch for training data
-	        im_patch_batch_trn, lb_patch_batch_trn = dp.data_batch(im_norm_trn, 
-	                                                               lb_norm_trn, 
-	                                                               patch_cpt_trn, 
-	                                                               im_patch_width, 
-	                                                               im_patch_height, 
-	                                                               lb_patch_width, 
-	                                                               lb_patch_height, 
-	                                                               batch_size,
-	                                                               it)
-	        im_patch_batch_val, lb_patch_batch_val = dp.data_patch_batch_random(im_norm_val, 
-														        	lb_norm_val, 
-														        	patch_cpt_val, 
-														        	im_patch_width, 
-														        	im_patch_height, 
-														        	lb_patch_width, 
-														        	lb_patch_height, 
-														        	batch_size)           
+	        im_patch_batch_trn, lb_patch_batch_trn = dp.data_batch(im_norm_trn,
+                                                                   lb_norm_trn,
+                                                                   patch_cpt_trn,
+                                                                   im_patch_width,
+                                                                   im_patch_height,
+                                                                   lb_patch_width,
+                                                                   lb_patch_height,
+                                                                   batch_size, it)
+	        im_patch_batch_val, lb_patch_batch_val = dp.data_patch_batch_random(im_norm_val,
+                                                                                lb_norm_val,
+                                                                                patch_cpt_val,
+                                                                                im_patch_width,
+                                                                                im_patch_height,
+                                                                                lb_patch_width,
+                                                                                lb_patch_height,
+                                                                                batch_size)
 
 	        # feed data
 	        Feed_Dict_Trn = {x: im_patch_batch_trn, y_true: lb_patch_batch_trn}
