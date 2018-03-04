@@ -61,33 +61,59 @@ def load_data(data_directory, nRand_sel):
     labels = [imread(lb) for lb in label_names]
     
     return images, labels
-    
 
 
-def image_normaliztion(im):
+def image_normalize(im):
     """
     Image normalization
     INPUT:
       im
     OUTPUT:
       im_norm
-    """  
+    """
+
     # change the data type for nomalization    
     im = np.array(im)
     im = im.astype(np.float32)
     
     #size of im
-    width, height, band = np.shape(im)
+    height, width, band = np.shape(im)
     #reshape for normalization    
-    im = np.reshape(im, (width*height, band))      
-    # preprocessing, normalization, mean 0 and unit variance
-    im_norm = preprocessing.scale(im)    
+#    im = np.reshape(im, (height*width, band))
+    # preprocessing, normalization
+    im_norm = []
+    for i in range(band):
+        im_bi = im[:, :, i]  # the ith band image
+        im_bi = np.reshape(im_bi, height*width)  # change the single band image to be an 1d array
+        mean_bi = np.mean(im_bi)  # sample mean
+        std_bi = np.std(im_bi)  # standard deviation
+        im_bi = (im_bi - mean_bi) / std_bi  # mean 0 and unit variance
+#        im_bi = preprocessing.scale(im_bi)
+#        im_bi = np.reshape(im_bi, [height, width])
+        im_norm.append(im_bi)
+
+    im_norm = np.array(im_norm)
+    im_norm = im_norm.transpose()
+    im_norm = np.reshape(im_norm, (height, width, band))
+
+#    im_norm = preprocessing.scale(im, axis=0)
+
+    """
+    test
+    """
+#    xm = np.mean(im[0,:])
+#    xs = np.std(im[0,:])
+#    imt = im[0,:] - xm
+#    imt /= xs
+
+
     # reshape to get normalized image
-    im_norm = np.reshape(im_norm, (width, height, band))
+#    im_norm = np.reshape(im_norm, (height, width, band))
+#    height, width, band = np.shape(im_norm)
     
     return im_norm
 
-def patch_center_point(im_width, im_height, im_patch_width, im_patch_height, lb_patch_width, lb_patch_height, nIm):
+def patch_center_point(im_height, im_width, im_patch_height, im_patch_width, lb_patch_height, lb_patch_width, nIm):
     """
     Compute the center point coordinates of the patch in raw images
     INPUT:
@@ -99,29 +125,22 @@ def patch_center_point(im_width, im_height, im_patch_width, im_patch_height, lb_
     """
     # for each image, the pathc center coordinates are the same
     patch_cpt = []
-    num_patch_width = int((im_width - im_patch_width) / lb_patch_width + 1)
-    num_patch_height = int((im_height - im_patch_height) / lb_patch_height + 1)
+    num_patch_height = int((im_height - im_patch_height) / lb_patch_height + 1)  # number of patches in row direction
+    num_patch_width = int((im_width - im_patch_width) / lb_patch_width + 1)  # number of patches in column direction
+
     for k in range(nIm):
         for i in range(num_patch_height):
-            cpt_i = int(im_patch_height / 2) + i * lb_patch_height # coordinate: y from up to bottom
+            cpt_i = int(im_patch_height / 2) + i * lb_patch_height # coordinate: row
             for j in range(num_patch_width):                
-                cpt_j = int(im_patch_width / 2) + j * lb_patch_width # coordinate: x from left to right
-                patch_cpt.append([k, cpt_j, cpt_i])
+                cpt_j = int(im_patch_width / 2) + j * lb_patch_width # coordinate: column
+                patch_cpt.append([k, cpt_i, cpt_j])
                 
     return patch_cpt
 
 #patch_cpt = patch_center_point(1500, 1500, 64, 64, 16, 16, 100)
 #print(patch_cpt)
 
-def data_batch(image, 
-            label, 
-            patch_cpt, 
-            im_patch_width, 
-            im_patch_height, 
-            lb_patch_width, 
-            lb_patch_height, 
-            batch_size, 
-            batch_idx):
+def data_batch(image, label, patch_cpt, im_patch_height, im_patch_width, lb_patch_height, lb_patch_width, batch_size, batch_idx):
     """
     Extract image patches for training according to patch_cpt
     Each images patches are overlapped to make label patches exactly join together without overlap or gap
@@ -135,45 +154,47 @@ def data_batch(image,
     OUTPUT:
         batch images with corresponding labels of size batch_size
     """
+
     idx_patch_start = batch_size * batch_idx # starting index of the first image patch in current patch
-    idx_patch_end = idx_patch_start+batch_size
-    # the last batch may have size greater than the batch_size
+    idx_patch_end = idx_patch_start + batch_size
+
+    # the last batch may have size smaller than the batch_size
     if idx_patch_end > len(patch_cpt):
         idx_patch_end = len(patch_cpt)
+
     im_patch_batch = [] # array to store images patches in current batch
     lb_patch_batch = [] # array to store label patches in current batch
-    
 
     for i in range(idx_patch_start, idx_patch_end):
         # add each image patch to [im_patch_batch]
-        idx_im = patch_cpt[i][0] # index of raw images
-        # coordinate system: x means pixel moving from left to right, y means pixel moving from up to bottom
-        x_patch_cpt = patch_cpt[i][1] # x coordinate of center point
-        y_patch_cpt = patch_cpt[i][2] # y ...
+        idx_im = patch_cpt[i][0] # index of raw image that the ith patch belongs to
+        # coordinate system: [row, col]
+        row_patch_cpt = patch_cpt[i][1] # row coordinate of center point
+        col_patch_cpt = patch_cpt[i][2] # column ...
         
         # note that image patch and label patch have different sizes
-        x_left_im = x_patch_cpt - int(im_patch_width / 2) # left most coordinate of the patch
-        y_up_im   = y_patch_cpt - int(im_patch_height / 2) # upper most coordinate of the patch
-        x_left_lb = x_patch_cpt - int(lb_patch_width / 2)
-        y_up_lb   = y_patch_cpt - int(lb_patch_height / 2)
+        row_up_im = row_patch_cpt - int(im_patch_height / 2) # row index: upper most
+        col_left_im = col_patch_cpt - int(im_patch_width / 2) # column index: left most
+        row_up_lb = row_patch_cpt - int(lb_patch_height / 2)
+        col_left_lb = col_patch_cpt - int(lb_patch_width / 2)
         
         # extract the patch
-        im_patch = image[idx_im][x_left_im:x_left_im+im_patch_width, y_up_im:y_up_im+im_patch_height] # in python, [a:b] does not include b but less than b
-        lb_patch = label[idx_im][x_left_lb:x_left_lb+lb_patch_width, y_up_lb:y_up_lb+lb_patch_height]
+        im_patch = image[idx_im][row_up_im: row_up_im+im_patch_height, col_left_im: col_left_im+im_patch_width] # in python, [a:b] does not include b but less than b
+        lb_patch = label[idx_im][row_up_lb: row_up_lb+lb_patch_height, col_left_lb: col_left_lb+lb_patch_width]
         
-        # add this patch to the array
+        # add this patch to the batch array
         im_patch_batch.append(im_patch)
         lb_patch_batch.append(lb_patch)
     
     return im_patch_batch, lb_patch_batch
 
 def data_patch(image,
-            label, 
-            patch_cpt, 
-            im_patch_width, 
-            im_patch_height, 
-            lb_patch_width, 
-            lb_patch_height):
+               label,
+               patch_cpt,
+               im_patch_height,
+               im_patch_width,
+               lb_patch_height,
+               lb_patch_width):
     """
     transform raw images into small patches
     """
@@ -181,20 +202,21 @@ def data_patch(image,
     lb_patch_all = []
 
     for i in range(len(patch_cpt)):
-        idx_im = patch_cpt[i][0] # index of raw images
-        # coordinate system: x means pixel moving from left to right, y means pixel moving from up to bottom
-        x_patch_cpt = patch_cpt[i][1] # x coordinate of center point
-        y_patch_cpt = patch_cpt[i][2] # y ...
+        idx_im = patch_cpt[i][0] # index of the raw image this patch belongs to
+        # coordinate system: [row, col]
+        row_patch_cpt = patch_cpt[i][1] # row coordinate of center point
+        col_patch_cpt = patch_cpt[i][2] # column ...
 
         # note that image patch and label patch have different sizes
-        x_left_im = x_patch_cpt - int(im_patch_width / 2) # left most coordinate of the patch
-        y_up_im   = y_patch_cpt - int(im_patch_height / 2) # upper most coordinate of the patch
-        x_left_lb = x_patch_cpt - int(lb_patch_width / 2)
-        y_up_lb   = y_patch_cpt - int(lb_patch_height / 2)
+        row_up_im = row_patch_cpt - int(im_patch_height / 2) # row index: upper most
+        col_left_im = col_patch_cpt - int(im_patch_width / 2) # column index: left most
+        row_up_lb = row_patch_cpt - int(lb_patch_height / 2)
+        col_left_lb = col_patch_cpt - int(lb_patch_width / 2)
+
 
         # extract the patch
-        im_patch = image[idx_im][x_left_im:x_left_im+im_patch_width, y_up_im:y_up_im+im_patch_height] # in python, [a:b] does not include b but less than b
-        lb_patch = label[idx_im][x_left_lb:x_left_lb+lb_patch_width, y_up_lb:y_up_lb+lb_patch_height]
+        im_patch = image[idx_im][row_up_im: row_up_im+im_patch_height, col_left_im: col_left_im+im_patch_width] # in python, [a:b] does not include b but less than b
+        lb_patch = label[idx_im][row_up_lb: row_up_lb+lb_patch_height, col_left_lb: col_left_lb+lb_patch_width]
         
         # add this patch to the array
         im_patch_all.append(im_patch)
@@ -220,19 +242,19 @@ def data_patch_batch_random(image,
 
     for i in patch_idx:
         idx_im = patch_cpt[i][0] # index of raw images
-        # coordinate system: x means pixel moving from left to right, y means pixel moving from up to bottom
-        x_patch_cpt = patch_cpt[i][1] # x coordinate of center point
-        y_patch_cpt = patch_cpt[i][2] # y ...
+        # coordinate system: [row, col]
+        row_patch_cpt = patch_cpt[i][1]  # row coordinate of center point
+        col_patch_cpt = patch_cpt[i][2]  # column ...
 
         # note that image patch and label patch have different sizes
-        x_left_im = x_patch_cpt - int(im_patch_width / 2) # left most coordinate of the patch
-        y_up_im   = y_patch_cpt - int(im_patch_height / 2) # upper most coordinate of the patch
-        x_left_lb = x_patch_cpt - int(lb_patch_width / 2)
-        y_up_lb   = y_patch_cpt - int(lb_patch_height / 2)
+        row_up_im = row_patch_cpt - int(im_patch_height / 2)  # row index: upper most
+        col_left_im = col_patch_cpt - int(im_patch_width / 2)  # column index: left most
+        row_up_lb = row_patch_cpt - int(lb_patch_height / 2)
+        col_left_lb = col_patch_cpt - int(lb_patch_width / 2)
 
         # extract the patch
-        im_patch = image[idx_im][x_left_im:x_left_im+im_patch_width, y_up_im:y_up_im+im_patch_height] # in python, [a:b] does not include b but less than b
-        lb_patch = label[idx_im][x_left_lb:x_left_lb+lb_patch_width, y_up_lb:y_up_lb+lb_patch_height]
+        im_patch = image[idx_im][row_up_im: row_up_im + im_patch_height, col_left_im: col_left_im + im_patch_width]  # in python, [a:b] does not include b but less than b
+        lb_patch = label[idx_im][row_up_lb: row_up_lb + lb_patch_height, col_left_lb: col_left_lb + lb_patch_width]
         
         # add this patch to the array
         im_patch_batch.append(im_patch)
@@ -248,19 +270,19 @@ def image_mosaic(output_patch, patch_cpt):
     output_patch = np.array(output_patch)
     output_patch = output_patch.astype(np.int32)
 
-    num_batch, batch_size, patch_width, patch_height = np.shape(output_patch)
+    num_batch, batch_size, patch_height, patch_width = np.shape(output_patch)
     output_label = np.zeros((1500, 1500), dtype=np.int32)
 
-    output_patch = np.reshape(output_patch, (num_batch*batch_size, patch_width, patch_height))
+    output_patch = np.reshape(output_patch, (num_batch*batch_size, patch_height, patch_width))
 
     # number of patches
     num_patch = num_batch*batch_size
     
     # assign patches to the big output label image
     for k in range(num_patch):
-        cpt_x = patch_cpt[k][1]
-        cpt_y = patch_cpt[k][2]
-        output_label[cpt_y-8:cpt_y+8, cpt_x-8:cpt_x+8] = output_patch[k]
+        cpt_row = patch_cpt[k][1]
+        cpt_col = patch_cpt[k][2]
+        output_label[cpt_row-8:cpt_row+8, cpt_col-8:cpt_col+8] = output_patch[k]
 
     return output_label
     
