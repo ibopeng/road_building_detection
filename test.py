@@ -1,5 +1,5 @@
 """
-This script is designed for testing the model trained by main.py
+This script is designed for testing the model trained by rd_train.py
 
 Created on Sun Feb 16 2018
 @ Author: Bo Peng
@@ -9,8 +9,9 @@ Created on Sun Feb 16 2018
 
 import dataProc as dp
 import tensorflow as tf
-import designCNN as dc
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.misc import imsave
 
 """define data dimensions"""
 # raw image size
@@ -25,72 +26,81 @@ lb_patch_width = 16
 lb_patch_height= 16
 # number of raw images used for training
 num_rawIm_test = 1
-num_rawIm_val_inf = 15
 # batch size
-batch_size = int((im_width - im_patch_width) / lb_patch_width + 1)
+batch_size_test = int((im_width - im_patch_width) / lb_patch_width + 1)
 
 """Data Preprocessing: Normalization"""
-# load raw images and labels for training and validation
-im_raw_test, lb_raw_test = dp.load_data('../mass_data_road/data_sub/test', num_rawIm_test)
-print('raw data loaded successful')
-print('Number of images loaded: ', num_rawIm_test)
-# normalization of raw images
-im_norm_test = [dp.image_normaliztion(im_raw_test[i]) for i in range(len(im_raw_test))]
-print('Image normalization successful.')
+# load raw images and labels for testing
+im_test, lb_test = dp.load_data('./data_sub/test', num_rawIm_test)
+print('Number of test images loaded: ', num_rawIm_test)
+
 # change labels data type to int32 and set 255 to be 1 s
 # training data
-lb_norm_test = dp.np.array(lb_raw_test)
-lb_norm_test = lb_norm_test.astype(dp.np.int32)
-lb_norm_test = [lb_norm_test[i] / 255 for i in range(len(lb_norm_test))]
-print('Label data type changed successful.')
+lb_test = np.array(lb_test)
+lb_test = lb_test.astype(np.int32)
+lb_test = [lb / 255 for lb in lb_test]
+print('Label data type changed.')
 
 # compute the coordinates of patch center points
-patch_cpt_test = dp.patch_center_point(im_width, im_height, im_patch_width, im_patch_height, lb_patch_width, lb_patch_height, len(im_norm_test))
-print('patch center points generated.', len(patch_cpt_test))
+patch_cpt_test = dp.patch_center_point(im_height, im_width, im_patch_height, im_patch_width, lb_patch_height, lb_patch_width, len(im_test))
+print('Patch center points generated:', len(patch_cpt_test))
 
    
 output = []
 with tf.Session() as sess:
-	saver = tf.train.import_meta_graph('./Model_Save/road_detection_model-100.meta')
-	saver.restore(sess, tf.train.latest_checkpoint('./Model_Save/'))
+    saver = tf.train.import_meta_graph('./model_save/rd_model.ckpt-27500.meta')
+    saver.restore(sess, tf.train.latest_checkpoint('./model_save/'))
 
-	graph = tf.get_default_graph()
-	x = graph.get_tensor_by_name("x:0")
-	y_true = graph.get_tensor_by_name("y_true:0")
-	y_pred = graph.get_tensor_by_name("y_pred:0")
+    graph = tf.get_default_graph()
+    x = graph.get_tensor_by_name("x:0")
+    y_true = graph.get_tensor_by_name("y_true:0")
+    y_pred = graph.get_tensor_by_name("y_pred:0")
 
-	acc = graph.get_tensor_by_name("acc:0")
+    acc = graph.get_tensor_by_name("acc:0")
 
-	sz_imtrain_test = len(patch_cpt_test)
-	num_iterations = int(sz_imtrain_test / batch_size + 0.5)
+    num_patch_test = len(patch_cpt_test)
+    num_iterations = int(num_patch_test / batch_size_test + 0.5)
 
-	print("Number of iterations: ", num_iterations)
-	#num_iterations = 200
+    print("Number of iterations: ", num_iterations)
 
-	acc_test = []
-	
+    acc_test = []
 
-	for it in range(num_iterations):
-		#print("hou hd")
-		# extract image and label patches in current batch for training data
-		im_patch_batch_test, lb_patch_batch_test = dp.data_batch(im_norm_test, lb_norm_test, patch_cpt_test, im_patch_width, im_patch_height, lb_patch_width, lb_patch_height, batch_size, it)
+    for it in range(num_iterations):
+        #print("hou hd")
+        #  extract image and label patches in current batch for test data
+        im_patch_batch_test, lb_patch_batch_test = dp.data_batch(im_test,
+                                                                 lb_test,
+                                                                 patch_cpt_test,
+                                                                 im_patch_height,
+                                                                 im_patch_width,
+                                                                 lb_patch_height,
+                                                                 lb_patch_width,
+                                                                 batch_size_test,
+                                                                 it)
+        # patch normalization
+        im_patch_batch_test = [dp.image_normalize(im) for im in im_patch_batch_test]
 
-		Feed_Dict_Test = {x: im_patch_batch_test, y_true: lb_patch_batch_test}
-		acc_test.append(sess.run(acc, feed_dict = Feed_Dict_Test))
+        # feed data
+        Feed_Dict_Test = {x: im_patch_batch_test, y_true: lb_patch_batch_test}
 
-		# store the prediction for current batch
-		output.append(sess.run(y_pred, feed_dict = Feed_Dict_Test))
+        _acc_test_ = sess.run(acc, feed_dict=Feed_Dict_Test)
+        acc_test.append(_acc_test_)
 
+        # store the prediction for current batch
+        output.append(sess.run(y_pred, feed_dict=Feed_Dict_Test))
 
-		if it % 10 == 0:
-			msg = "Iteration: {0}...Test acc: {1:>6.1%}"
-			print(msg.format(it, acc_test[it]))
-		
+        if it % 10 == 0:
+            msg = "Iteration: {0}...Test acc: {1:>6.1%}"
+            print(msg.format(it, _acc_test_))
+
 output_label = dp.image_mosaic(output, patch_cpt_test)
-print(dp.np.shape(output_label))
+print(np.shape(output_label))
 
 plt.imshow(output_label)
 plt.show()
+
+# write output_label to image file
+imsave('test_pred.tif', output_label)
 
 
 

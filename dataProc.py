@@ -86,7 +86,7 @@ def image_normalize(im):
         im_bi = im[:, :, i]  # the ith band image
         im_bi = np.reshape(im_bi, height*width)  # change the single band image to be an 1d array
         mean_bi = np.mean(im_bi)  # sample mean
-        std_bi = np.std(im_bi)  # standard deviation
+        std_bi = np.std(im_bi) + 0.00000001  # standard deviation, 0.0000001 is used to avoid numeric issue
         im_bi = (im_bi - mean_bi) / std_bi  # mean 0 and unit variance
 #        im_bi = preprocessing.scale(im_bi)
 #        im_bi = np.reshape(im_bi, [height, width])
@@ -95,21 +95,6 @@ def image_normalize(im):
     im_norm = np.array(im_norm)
     im_norm = im_norm.transpose()
     im_norm = np.reshape(im_norm, (height, width, band))
-
-#    im_norm = preprocessing.scale(im, axis=0)
-
-    """
-    test
-    """
-#    xm = np.mean(im[0,:])
-#    xs = np.std(im[0,:])
-#    imt = im[0,:] - xm
-#    imt /= xs
-
-
-    # reshape to get normalized image
-#    im_norm = np.reshape(im_norm, (height, width, band))
-#    height, width, band = np.shape(im_norm)
     
     return im_norm
 
@@ -142,17 +127,19 @@ def patch_center_point(im_height, im_width, im_patch_height, im_patch_width, lb_
 
 def data_batch(image, label, patch_cpt, im_patch_height, im_patch_width, lb_patch_height, lb_patch_width, batch_size, batch_idx):
     """
+    note that the first 2 arguments should be lists
     Extract image patches for training according to patch_cpt
     Each images patches are overlapped to make label patches exactly join together without overlap or gap
-    INPUT:
-        image: raw images loaded
-        label: road labels loaded
-        patch_cpt: center points for each patch
-        im/lb_patch_width/height: size of image/label patches
-        batch_size: the number of patches used for training in one iteration
-        batch_idx: the index of current batch
-    OUTPUT:
-        batch images with corresponding labels of size batch_size
+    :param image: raw images list
+    :param label: road label images list
+    :param patch_cpt: center points for each patch
+    :param im_patch_height: height of image/label patches
+    :param im_patch_width: width of image/label patches
+    :param lb_patch_height: height of image/label patches
+    :param lb_patch_width: width of image/label patches
+    :param batch_size: the number of patches used for training in one iteration/batch
+    :param batch_idx: the index of current batch
+    :return: batch image patches with corresponding labels of size batch_size
     """
 
     idx_patch_start = batch_size * batch_idx # starting index of the first image patch in current patch
@@ -262,9 +249,9 @@ def data_patch_batch_random(image,
     
     return im_patch_batch, lb_patch_batch
 
-def image_mosaic(output_patch, patch_cpt):
+def pred_mosaic(output_patch, patch_cpt):
     """
-    mosaic image patches into one image
+    mosaic predicted label patches into one image
     """
 
     output_patch = np.array(output_patch)

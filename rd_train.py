@@ -36,8 +36,8 @@ num_epochs = 3
 # load raw images and labels for training and validation
 im_trn, lb_trn = dp.load_data('./data_sub/train', num_rawIm_trn)
 im_val, lb_val = dp.load_data('./data_sub/valid', num_rawIm_val)
-print('Raw data loaded...')
-print('Number of images loaded: {0}'.format(len(im_trn)))
+print('Number of train images loaded: {0}'.format(len(im_trn)))
+print('Number of valid images loaded: {0}'.format(len(im_val)))
 # normalization of raw images
 #im_norm_trn = [dp.image_normalize_scale(im_raw_trn[i]) for i in range(len(im_raw_trn))]
 #im_norm_val = [dp.image_normalize_scale(im_raw_val[i]) for i in range(len(im_raw_val))]
@@ -156,8 +156,8 @@ with graph.as_default():
 
     # define loss
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y_true, logits=output_patch)
-    loss = tf.reduce_mean(cross_entropy, name='loss')
-    train_op = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(loss)
+    loss = tf.reduce_sum(cross_entropy, name='loss')  # summation of pixel-wise cross entropy
+    train_op = tf.train.GradientDescentOptimizer(learning_rate=0.0001).minimize(loss)
 
     # get the prediction
     y_pred = tf.argmax(output_patch, axis=3, output_type=tf.int32, name='y_pred')
@@ -186,8 +186,9 @@ with tf.Session(graph = graph) as sess:
     num_patch_val = len(patch_cpt_val)
     num_iterations_val = int(num_patch_val / batch_size_val)
 
-    acc_trn = []
-    acc_val = []
+    acc_trn = []  # record training accuracy for each iteration/batch
+    acc_trn_avg = [] # record average training accuracy for every N iteration
+    acc_val_avg = []  # record average valid accuracy for every N iteration
 
     # extract all patches of valid dataset
 #    im_patch_val, lb_patch_val = dp.data_patch(im_val,
@@ -223,11 +224,14 @@ with tf.Session(graph = graph) as sess:
 
             # train CNN
             sess.run(train_op, feed_dict=Feed_Dict_Trn)
+            # training accuracy
+            _acc_t_ = sess.run(acc, feed_dict=Feed_Dict_Trn)
+            acc_trn.append(_acc_t_)
 
-            if it % 100 == 0:
-                # training accuracy
-                _acc_t_ = sess.run(acc, feed_dict=Feed_Dict_Trn)
-                acc_trn.append(_acc_t_)
+            if it % 300 == 0:  # each image have about 8100/32 = 253 batches, after each image, estimate the accuracy
+                # average training accuracy up to now
+                _acc_t_avg_ = np.mean(np.array(acc_trn))
+                acc_trn_avg.append(_acc_t_avg_)
 
                 # validation accuracy
                 # due to limited computer memory, we cannot feed all validation patches into the model at one time
@@ -252,17 +256,18 @@ with tf.Session(graph = graph) as sess:
                     _acc_v_batch_.append(sess.run(acc, feed_dict=Feed_Dict_Val))
 
                 # record the average accuracy of this <it>
-                _acc_v_ = np.mean(np.array(_acc_v_batch_))
-                acc_val.append(_acc_v_)
+                _acc_v_avg_ = np.mean(np.array(_acc_v_batch_))
+                acc_val_avg.append(_acc_v_avg_)
 
                 # save the trained model
-                saver.save(sess, "./model_save/rd_model.ckpt", global_step = ep*num_iterations+it)
-                # every 100 iteration, validate
+                saver.save(sess, "./model_save/rd_model", global_step = ep*num_iterations+it)
+                # every 300 iteration, validate
                 msg = "Epoch: {0}...Iteration: {1}...Train acc: {2:>6.1%}...Valid acc: {3:>6.1%}"
-                print(msg.format(ep, it, _acc_t_, _acc_v_))
+                print(msg.format(ep, it, _acc_t_avg_, _acc_v_avg_))
 
     # write training and valid accuracy into file
     np.savetxt('acc_train.txt', np.array(acc_trn))
-    np.savetxt('acc_valid.txt', np.array(acc_val))
+    np.savetxt('acc_train.txt', np.array(acc_trn_avg))
+    np.savetxt('acc_valid.txt', np.array(acc_val_avg))
 
     print("\nTraining Done...")
