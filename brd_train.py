@@ -5,7 +5,7 @@ Created on Sun Feb 11 09:34:44 2018
 @ Project: Road Extraction
 """
 
-import dataProc as dp
+import brd_data_proc as dp
 import tensorflow as tf
 import designCNN as dc
 import numpy as np
@@ -26,33 +26,25 @@ lb_patch_width = 16
 num_rawIm_trn = 0  # 0 means using all training images
 num_rawIm_val = 0
 # batch size
-batch_size_trn = 32
-batch_size_val = 1000
+batch_size_trn = 32  # number of patches in this batch for training
+batch_size_val = 1000  # number of patches in this batch for validation
 # number of epochs for training
 num_epochs = 3
 
 
 """Data Preprocessing: Normalization"""
 # load raw images and labels for training and validation
-im_trn, lb_trn = dp.load_data('./data_sub/train', num_rawIm_trn)
-im_val, lb_val = dp.load_data('./data_sub/valid', num_rawIm_val)
+im_trn, lb_trn = dp.load_data('./mass_buildings_roads_sub/train', num_rawIm_trn)
+im_val, lb_val = dp.load_data('./mass_buildings_roads_sub/valid', num_rawIm_val)
 print('Number of train images loaded: {0}'.format(len(im_trn)))
 print('Number of valid images loaded: {0}'.format(len(im_val)))
-# normalization of raw images
-#im_norm_trn = [dp.image_normalize_scale(im_raw_trn[i]) for i in range(len(im_raw_trn))]
-#im_norm_val = [dp.image_normalize_scale(im_raw_val[i]) for i in range(len(im_raw_val))]
-#print('Image normalization successful.')
+
 
 # change labels data type to int32 and set 255 to be 1 s
 # training data
 lb_trn = np.array(lb_trn)
-lb_trn = lb_trn.astype(np.int32)
-lb_trn = [lb / 255 for lb in lb_trn]
-
 # validation data
 lb_val = np.array(lb_val)
-lb_val = lb_val.astype(np.int32)
-lb_val = [lb / 255 for lb in lb_val]
 
 print('Label data type changed...')
 #print(lb_norm_trn[0])
@@ -72,6 +64,12 @@ patch_cpt_val = dp.patch_center_point(im_height,
                                       lb_patch_height,
                                       lb_patch_width,
                                       len(im_val))
+
+# delete null patches, i.e., patches with large number of pixels DN = 255
+print('Patch Cleaning...')
+patch_cpt_trn = dp.patch_clean(im_trn, patch_cpt_trn, im_patch_height, im_patch_width)
+patch_cpt_val = dp.patch_clean(im_val, patch_cpt_val, im_patch_height, im_patch_width)
+
 print('Patch center points generated...')
 
 

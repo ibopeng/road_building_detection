@@ -11,7 +11,6 @@ import os
 import random
 import numpy as np
 from skimage.io import imread
-from sklearn import preprocessing
 
 
 
@@ -19,7 +18,7 @@ def load_data(data_directory, nRand_sel):
 
     #path of images and labels
     path_sat_image = os.path.join(data_directory, 'sat')
-    path_map_label = os.path.join(data_directory, 'map')
+    path_map_label = os.path.join(data_directory, 'map_binary')
 
     #get filenames for each image for label file
     image_names = []
@@ -39,12 +38,12 @@ def load_data(data_directory, nRand_sel):
             image_names.append(os.path.join(path_sat_image, f))
             #label file names = image file names but with different path
             
-            fb = f[0:-1] #note that label data end with .tif rather than .tiff
+            fb = f[:-5] + '.npy' #note that label data end with .npy
             label_names.append(os.path.join(path_map_label, fb))
                               
     #read images and labels                          
     images = [imread(im) for im in image_names]
-    labels = [imread(lb) for lb in label_names]
+    labels = [np.load(lb) for lb in label_names]
     
     return images, labels
 
@@ -110,6 +109,51 @@ def patch_center_point(im_height, im_width, im_patch_height, im_patch_width, lb_
 
 #patch_cpt = patch_center_point(1500, 1500, 64, 64, 16, 16, 100)
 #print(patch_cpt)
+
+def patch_clean(images, patch_cpt, im_patch_height, im_patch_width):
+    """
+    Clean the patches, i.e., remove patches with large number of pixels DN = 255
+    :param images:
+    :param patch_cpt:
+    :return:
+    """
+
+    # loop over each patch to see whether this patch contains large number of pixels DN = 255
+    patch_cpt_clean = list(patch_cpt)
+    for i in range(len(patch_cpt)):
+        # add each image patch to [im_patch_batch]
+        idx_im = patch_cpt[i][0] # index of raw image that the ith patch belongs to
+        # coordinate system: [row, col]
+        row_patch_cpt = patch_cpt[i][1] # row coordinate of center point
+        col_patch_cpt = patch_cpt[i][2] # column ...
+
+        # note that image patch and label patch have different sizes
+        row_up_im = row_patch_cpt - int(im_patch_height / 2)  # row index: upper most
+        col_left_im = col_patch_cpt - int(im_patch_width / 2)  # column index: left most
+
+        # extract the patch
+        im_patch = images[idx_im][row_up_im: row_up_im + im_patch_height,
+                   col_left_im: col_left_im + im_patch_width]  # in python, [a:b] does not include b but less than b
+
+        # check if this patch contains large number of pixels DN = 255
+        im_patch_array = np.reshape(im_patch, (im_patch_height*im_patch_width, -1))
+        num_all_255 = 0  # number of null pixels in this patch
+        for k in range(im_patch_height*im_patch_width):  # row
+                if all(im_patch_array[k] == [255, 255, 255]):
+                    num_all_255 = num_all_255 + 1
+                    # when this patch contains more than 10% pixels are null, remove this patch
+                    thld_rem = im_patch_height*im_patch_width * 0.1
+#                    thld_rem = 1
+                    if num_all_255 >= thld_rem:
+                        patch_cpt_clean.remove(patch_cpt[i])
+                        break
+        if i % 1000 == 0:
+            print(i)
+
+    return patch_cpt_clean
+
+
+
 
 def data_batch(image, label, patch_cpt, im_patch_height, im_patch_width, lb_patch_height, lb_patch_width, batch_size, batch_idx):
     """
