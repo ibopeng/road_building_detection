@@ -101,11 +101,11 @@ with graph.as_default():
     num_filters_conv4 = 32
 
     size_conv5 = 3
-    num_filters_conv5 = 512
+    num_filters_conv5 = 768
 
     size_avgpool = 3
 
-    num_output_channels = 2
+    num_output_channels = 3
 
     layer_cnn1 = dc.create_cnn_layer(input=x,
                                      num_input_channels = nChannel,
