@@ -13,10 +13,10 @@ from skimage.color import rgb2gray
 import numpy as np
 from scipy.misc import imsave
 
-dirpath_bldg_map = '/home/bo/Desktop/vmnih/data/mass_buildings/train/map'
-dirpath_road_map = '/home/bo/Desktop/vmnih/data/mass_roads/train/map'
-dirpath_merge_map = '/home/bo/Desktop/vmnih/data/mass_buildings_roads/train/map'
-dirpath_merge_map_binary = '/home/bo/Desktop/vmnih/data/mass_buildings_roads/train/map_binary'
+dirpath_bldg_map = '/home/bo/Desktop/vmnih/data/mass_buildings/test/map'
+dirpath_road_map = '/home/bo/Desktop/vmnih/data/mass_roads/test/map'
+dirpath_merge_map = '/home/bo/Desktop/vmnih/data/mass_buildings_roads/test/map'
+dirpath_merge_map_binary = '/home/bo/Desktop/vmnih/data/mass_buildings_roads/test/map_binary'
 
 # Note that all building images are contained in road set
 # get file name

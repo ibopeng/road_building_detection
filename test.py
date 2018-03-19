@@ -7,7 +7,7 @@ Created on Sun Feb 16 2018
 @ Project: Road Extraction
 """
 
-import dataProc as dp
+import brd_data_proc as dp
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +31,7 @@ batch_size_test = int((im_width - im_patch_width) / lb_patch_width + 1)
 
 """Data Preprocessing: Normalization"""
 # load raw images and labels for testing
-im_test, lb_test = dp.load_data('./data_sub/test', num_rawIm_test)
+im_test, lb_test = dp.load_data('./mass_buildings_roads/test', num_rawIm_test)
 print('Number of test images loaded: ', num_rawIm_test)
 
 # change labels data type to int32 and set 255 to be 1 s
@@ -48,7 +48,7 @@ print('Patch center points generated:', len(patch_cpt_test))
    
 output = []
 with tf.Session() as sess:
-    saver = tf.train.import_meta_graph('./model_save/rd_model.ckpt-27500.meta')
+    saver = tf.train.import_meta_graph('./model_save/rd_model-506.meta')
     saver.restore(sess, tf.train.latest_checkpoint('./model_save/'))
 
     graph = tf.get_default_graph()
@@ -93,7 +93,7 @@ with tf.Session() as sess:
             msg = "Iteration: {0}...Test acc: {1:>6.1%}"
             print(msg.format(it, _acc_test_))
 
-output_label = dp.image_mosaic(output, patch_cpt_test)
+output_label = dp.pred_mosaic(output, patch_cpt_test)
 print(np.shape(output_label))
 
 plt.imshow(output_label)

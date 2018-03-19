@@ -23,8 +23,8 @@ nChannel = 3
 lb_patch_height= 16
 lb_patch_width = 16
 # number of raw images used for training
-num_rawIm_trn = 0  # 0 means using all training images
-num_rawIm_val = 0
+num_rawIm_trn = 1  # 0 means using all training images
+num_rawIm_val = 1
 # batch size
 batch_size_trn = 32  # number of patches in this batch for training
 batch_size_val = 1000  # number of patches in this batch for validation
@@ -34,8 +34,8 @@ num_epochs = 3
 
 """Data Preprocessing: Normalization"""
 # load raw images and labels for training and validation
-im_trn, lb_trn = dp.load_data('./mass_buildings_roads_sub/train', num_rawIm_trn)
-im_val, lb_val = dp.load_data('./mass_buildings_roads_sub/valid', num_rawIm_val)
+im_trn, lb_trn = dp.load_data('./mass_buildings_roads/train', num_rawIm_trn)
+im_val, lb_val = dp.load_data('./mass_buildings_roads/valid', num_rawIm_val)
 print('Number of train images loaded: {0}'.format(len(im_trn)))
 print('Number of valid images loaded: {0}'.format(len(im_val)))
 
