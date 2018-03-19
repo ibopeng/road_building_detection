@@ -46,7 +46,7 @@ patch_cpt_test = dp.patch_center_point(im_height,
                                        lb_patch_height,
                                        lb_patch_width,
                                        1)
-patch_cpt_test = dp.patch_clean(im_test, patch_cpt_test, im_patch_height, im_patch_width)
+#patch_cpt_test = dp.patch_clean(im_test, patch_cpt_test, im_patch_height, im_patch_width)
 # number of patches in one single test image
 num_patch_test = len(patch_cpt_test)
 
